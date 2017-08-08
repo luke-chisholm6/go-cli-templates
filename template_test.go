@@ -2,10 +2,10 @@ package main
 
 import (
 	"bytes"
+	"github.com/luke-chisholm6/go-cli-templates/readers"
 	"reflect"
 	"strings"
 	"testing"
-	"errors"
 )
 
 func TestGetTemplateContext_SliceWithInvalidStrings(t *testing.T) {
@@ -39,11 +39,6 @@ func TestGetTemplateContext_SliceWithValidStrings(t *testing.T) {
 
 }
 
-type ErrorReader struct {}
-func (reader *ErrorReader) Read(p []byte) (n int, err error) {
-	return 0, errors.New("I always error huehue")
-}
-
 func TestCompileTemplate_invalid(t *testing.T) {
 	templateString := "a template {{nonexistentfunction}}"
 	if _, err := compileTemplate(strings.NewReader(templateString)); err == nil {
@@ -55,7 +50,7 @@ func TestCompileTemplate_invalid(t *testing.T) {
 		t.Errorf("\"%v\" is an invalid template", templateString)
 	}
 
-	alwaysErrReader := &ErrorReader{}
+	alwaysErrReader := readers.NewErrorReader()
 	if _, err := compileTemplate(alwaysErrReader); err == nil {
 		t.Errorf("%v should always error", alwaysErrReader)
 	}
