@@ -1,11 +1,12 @@
 package main
 
 import (
+	"errors"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
 	"text/template"
-	"errors"
 )
 
 func splitKV(keyValue string) (key string, value string, err error) {
@@ -21,10 +22,10 @@ func splitKV(keyValue string) (key string, value string, err error) {
 	return
 }
 
-func ExtractKeyValueFromArray(keyValueArray[]string) (map[string]string, error) {
+func getTemplateContext(kvSlice []string) (map[string]string, error) {
 	keyValueMap := make(map[string]string)
 
-	for _, keyValue := range keyValueArray {
+	for _, keyValue := range kvSlice {
 		key, value, err := splitKV(keyValue)
 		if err != nil {
 			return keyValueMap, err
@@ -35,25 +36,40 @@ func ExtractKeyValueFromArray(keyValueArray[]string) (map[string]string, error) 
 	return keyValueMap, nil
 }
 
-func main() {
-	bytes, err := ioutil.ReadAll(os.Stdin)
+func compileTemplate(reader io.Reader) (*template.Template, error) {
+	bytes, err := ioutil.ReadAll(reader)
 	switch {
 	case err != nil:
-		panic(err)
+		return nil, err
 	case len(bytes) <= 0:
-		panic("no template context given")
+		return nil, errors.New("no template context given")
 	}
+
 	inputTemplate := string(bytes)
 	compiledTemplate, err := template.New("").Parse(inputTemplate)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	templateContext, err := ExtractKeyValueFromArray(os.Args[1:])
+	return compiledTemplate, nil
+}
+
+func render(tmpl *template.Template, context map[string]string, writer io.Writer) error {
+	return tmpl.Execute(writer, context)
+}
+
+func main() {
+	compiledTemplate, err := compileTemplate(os.Stdin)
 	if err != nil {
 		panic(err)
 	}
 
+	templateContext, err := getTemplateContext(os.Args[1:])
+	if err != nil {
+		panic(err)
+	}
 
-	compiledTemplate.Execute(os.Stdout, templateContext)
+	if err := render(compiledTemplate, templateContext, os.Stdout); err != nil {
+		panic(err)
+	}
 }
