@@ -1,12 +1,31 @@
 language: go
 go:
-  - 1.8.x
+- 1.8.x
 install:
-  - go get golang.org/x/tools/cmd/cover
-  - go get github.com/mattn/goveralls
-script: |
-  go test -v -covermode=count -coverprofile=coverage.out
-  $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+- # skip
+script:
+- go get -t -v ./...
+- go get github.com/mitchellh/gox
+- go get golang.org/x/tools/cmd/cover
+- go get github.com/mattn/goveralls
+- go test -v -covermode=count -coverprofile=coverage.out
+- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+- if [ -n "${TRAVIS_TAG}" ]; then gox -os="linux darwin windows" -arch="amd64 386"; fi
 env:
   global:
     secure: rXMEBN8G+A5nsYkA1ueIdaIYs0MGqGcy393659IzWXT2dJv4+ZdysP/vRH1C3eTAYGlSVChUUTKPwFfR5jWkzvnLHaoUblOHY3cUNo7s5jh3Iv/vCWOzj4E0/P7CudH0bbUVhqjkrgUwckCcfDPZMeSfjfQrT8eQN8ZiWnBCRH60hXJdZ6kLt6IN6g0PgbrNyfqH9o0gg6MVX35rV6k+1S+aE2ZxWkyKyHTEL4Jy20YqcMLeViMbT4GYRwcpDbYQ0JgJcvfU8H2I2pFccP38+epHealM5rZVCV8OPjYH9HHHuz+69bNrj9GlI6Y38dv1VkLwN/t7UcEbQLU0KMFINLMdKqnXc3UwIVgY83W84nVRySWnMdk96eZYdIXWBXjEyWfQadEHiZwLE+WL1TmBf3aUvj5w69gFkYABFhsWcTlGgaUMMcJq3kk6aIMBw9xz/1+QcKBMfoLa5IOGdx4nPaqZRAZ9wxLnKPbVxc8l83tIZ+JuZ4TgxWPw3VA1HWUcwZiV+uGrqEC15lPdoXsVcq/0KSb8t4SBLqxx1tHbFKyL7gQupaBXk89a8PF2VIg5AC+Ef+nxcx60er8c29B1r1yo/Pv/OZvDZiyFNIri4kH+1m/D38iqYnJzq6zlxKkWVQj194ON7bQ5xwRv9HFsVIwugmvIwyWmjJElgnjdp3E=
+deploy:
+  provider: releases
+  api_key:
+    secure: F2VhzKgAvUu6ouPiT4aPeSwTj5W/D0jFiuK5c3o2MXyPYnm4wln42xsjp/ZTn6Fxm8RVo3xA5fsmz7u0dUFONDTxLYqtns0mz1aWQ7sb5+NYkysMvFNinueNCFpCnsMcwT4n5kvVPCP2rsyzWRWxW0PB936vlMsKY71numw8oXL+1y02Qdp6LuD3RnUTeKsn02rzvnuCnfVoV1ucuibYwMIEINae9vDPqNche2a9tbQxRZ+kxv39Qbw8z0jbgo9FBf4Or7xsHR8CXOioeyHU9FfVWL/YeRrqg0DuXN+Ii/2HJhl5nBXuwSXp1X2m2FCZp+vCCRih45tmWilmaQqIZ+uenQhzVUYAKw86iHjEkv8MM9fdWL08/dKC5hkh7wiFana2GI6tj3G83uUTpv1tXvaTg6uNVvNN31w2ZZSK1K7oIPrYHcPiAK3CHenrx8n3Jarlv0nIG8emSP5ZOdeWaILZ0boZOYKvEr8myt/1jxSvnwfUqcz2hXufHLCxKXqZKsTfkiw2dyIG78LVqqSHjWL3bxNLzN3WI+1ryPFVbtXe3hNN6SaNeoE+tyrZmWPNDTFVVKTB5izaEcBlf13qASZt9h2Gfz5pZsdQjDTr6upiXsQJ424jamNKsnhJqYcnPRbSOjG2S5B8T/wWs4aXGTH1f3pcRLfeq206mkU/ihQ=
+  file:
+  - go-cli-templates_linux_amd64
+  - go-cli-templates_linux_386
+  - go-cli-templates_darwin_amd64
+  - go-cli-templates_darwin_386
+  - go-cli-templates_windows_amd64.exe
+  - go-cli-templates_windows_386.exe
+  skip_cleanup: true
+  on:
+    repo: luke-chisholm6/go-cli-templates
+    tags: true
