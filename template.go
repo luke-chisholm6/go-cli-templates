@@ -58,18 +58,26 @@ func render(tmpl *template.Template, context map[string]string, writer io.Writer
 	return tmpl.Execute(writer, context)
 }
 
+func run(inputTemplate io.Reader, inputContext []string, output io.Writer) error {
+	compiledTemplate, err := compileTemplate(inputTemplate)
+	if err != nil {
+		return err
+	}
+
+	templateContext, err := getTemplateContext(inputContext)
+	if err != nil {
+		return err
+	}
+
+	if err := render(compiledTemplate, templateContext, output); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
-	compiledTemplate, err := compileTemplate(os.Stdin)
-	if err != nil {
-		panic(err)
-	}
-
-	templateContext, err := getTemplateContext(os.Args[1:])
-	if err != nil {
-		panic(err)
-	}
-
-	if err := render(compiledTemplate, templateContext, os.Stdout); err != nil {
+	if err := run(os.Stdin, os.Args[1:], os.Stdout); err != nil {
 		panic(err)
 	}
 }

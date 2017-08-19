@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
-	"github.com/luke-chisholm6/go-cli-templates/readers"
 	"reflect"
 	"strings"
 	"testing"
+	"github.com/luke-chisholm6/go-cli-templates/readers"
+	"github.com/luke-chisholm6/go-cli-templates/writers"
+	"io"
 )
 
 func TestGetTemplateContext_SliceWithInvalidStrings(t *testing.T) {
@@ -84,4 +86,46 @@ func TestRender(t *testing.T) {
 	if got := writer.String(); expected != got {
 		t.Errorf("Expected: %v, Got: %v", expected, got)
 	}
+}
+
+func TestRun(t *testing.T) {
+	input := strings.NewReader("{{.test}} {{.key}}")
+	context := []string{
+		"test=Hello",
+		"key=world!",
+	}
+	writer := new(bytes.Buffer)
+	run(input, context, writer)
+
+	expected := "Hello world!"
+	got := writer.String()
+	if got != expected {
+		t.Errorf("Expected: %v, Got: %v", expected, got)
+	}
+}
+
+func TestRun_Invalid(t *testing.T) {
+	templateString := "a template {{nonexistentfunction}}"
+	var writer io.Writer = new(bytes.Buffer)
+	context := []string{
+		"test",
+		"key=world!",
+	}
+	if err := run(strings.NewReader(templateString), context, writer); err == nil {
+		t.Errorf("\"%v\" is an invalid template", templateString)
+	}
+
+	templateString = "a legit template {{.key}}"
+	if err := run(strings.NewReader(templateString), context, writer); err == nil {
+		t.Errorf("\"%v\" is invalid context", context)
+	}
+
+	context = []string{
+		"test=success",
+	}
+	writer = writers.NewErrorWriter()
+	if err := run(strings.NewReader(templateString), context, writer); err == nil {
+		t.Errorf("\"%v\" is invalid context", context)
+	}
+
 }
