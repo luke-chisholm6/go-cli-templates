@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
-	"reflect"
-	"strings"
-	"testing"
 	"github.com/luke-chisholm6/go-cli-templates/readers"
 	"github.com/luke-chisholm6/go-cli-templates/writers"
 	"io"
+	"reflect"
+	"strings"
+	"testing"
 )
 
 func TestGetTemplateContext_SliceWithInvalidStrings(t *testing.T) {
@@ -127,5 +127,4 @@ func TestRun_Invalid(t *testing.T) {
 	if err := run(strings.NewReader(templateString), context, writer); err == nil {
 		t.Errorf("\"%v\" is invalid context", context)
 	}
-
 }
