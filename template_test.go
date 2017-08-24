@@ -10,6 +10,35 @@ import (
 	"testing"
 )
 
+const (
+	InvalidTemplateErrorString          = "\"%v\" is an invalid template"
+	ValidTemplateErrorString            = "\"%v\" is a valid template"
+	UnexpectedResultErrorString         = "Expected: %+v\nGot: %+v"
+	InvalidTemplate_NonexistentFunction = "a template {{nonexistentfunction}}"
+)
+
+type TemplateTest struct {
+	templateString string
+	context        map[string]string
+	contextRaw     []string
+	expected       string
+}
+
+func NewLegitimateTemplateTest() *TemplateTest {
+	return &TemplateTest{
+		templateString: "legit template {{.test}} {{.key}}",
+		context: map[string]string{
+			"test": "test",
+			"key":  "value",
+		},
+		contextRaw: []string{
+			"test=test",
+			"key=value",
+		},
+		expected: "legit template test value",
+	}
+}
+
 func TestGetTemplateContext_SliceWithInvalidStrings(t *testing.T) {
 	kvSlice := []string{
 		"test",
@@ -21,35 +50,27 @@ func TestGetTemplateContext_SliceWithInvalidStrings(t *testing.T) {
 }
 
 func TestGetTemplateContext_SliceWithValidStrings(t *testing.T) {
-	kvSlice := []string{
-		"test=test",
-		"key=value",
-	}
+	templateTest := NewLegitimateTemplateTest()
 
-	kvMap, err := getTemplateContext(kvSlice)
+	kvMap, err := getTemplateContext(templateTest.contextRaw)
 	if err != nil {
-		t.Error("Cannot split a string into a kv pair that is not in the format of k=v")
+		t.Error(err)
 	}
 
-	kvMapComparison := map[string]string{
-		"test": "test",
-		"key":  "value",
+	if !reflect.DeepEqual(kvMap, templateTest.context) {
+		t.Errorf(UnexpectedResultErrorString, templateTest.context, kvMap)
 	}
-	if !reflect.DeepEqual(kvMap, kvMapComparison) {
-		t.Errorf("Expected: %+v\nGot: %+v", kvMapComparison, kvMap)
-	}
-
 }
 
 func TestCompileTemplate_invalid(t *testing.T) {
-	templateString := "a template {{nonexistentfunction}}"
+	templateString := InvalidTemplate_NonexistentFunction
 	if _, err := compileTemplate(strings.NewReader(templateString)); err == nil {
-		t.Errorf("\"%v\" is an invalid template", templateString)
+		t.Errorf(InvalidTemplateErrorString, templateString)
 	}
 
 	templateString = ""
 	if _, err := compileTemplate(strings.NewReader(templateString)); err == nil {
-		t.Errorf("\"%v\" is an invalid template", templateString)
+		t.Errorf(InvalidTemplateErrorString, templateString)
 	}
 
 	alwaysErrReader := readers.NewErrorReader()
@@ -59,72 +80,58 @@ func TestCompileTemplate_invalid(t *testing.T) {
 }
 
 func TestCompileTemplate_valid(t *testing.T) {
-	templateString := "legit template {{.test}}"
-	if _, err := compileTemplate(strings.NewReader(templateString)); err != nil {
-		t.Errorf("\"%v\" is a valid template", templateString)
+	templateTest := NewLegitimateTemplateTest()
+	if _, err := compileTemplate(strings.NewReader(templateTest.templateString)); err != nil {
+		t.Errorf(ValidTemplateErrorString, templateTest.templateString)
 	}
 }
 
 func TestRender(t *testing.T) {
-	templateString := "legit template {{.test}} {{.key}}"
-	compiledTemplate, err := compileTemplate(strings.NewReader(templateString))
+	templateTest := NewLegitimateTemplateTest()
+	compiledTemplate, err := compileTemplate(strings.NewReader(templateTest.templateString))
 	if err != nil {
-		t.Errorf("\"%v\" is a valid template", templateString)
-	}
-
-	context := map[string]string{
-		"test": "test",
-		"key":  "value",
+		t.Errorf(ValidTemplateErrorString, templateTest.templateString)
 	}
 
 	writer := new(bytes.Buffer)
-	err = render(compiledTemplate, context, writer)
-	expected := "legit template test value"
+	err = render(compiledTemplate, templateTest.context, writer)
 	if err != nil {
-		t.Errorf("Expected: %v, Got: %v", expected, err)
+		t.Errorf(UnexpectedResultErrorString, templateTest.expected, err)
 	}
-	if got := writer.String(); expected != got {
-		t.Errorf("Expected: %v, Got: %v", expected, got)
+	if got := writer.String(); templateTest.expected != got {
+		t.Errorf(UnexpectedResultErrorString, templateTest.expected, got)
 	}
 }
 
 func TestRun(t *testing.T) {
-	input := strings.NewReader("{{.test}} {{.key}}")
-	context := []string{
-		"test=Hello",
-		"key=world!",
-	}
+	templateTest := NewLegitimateTemplateTest()
+	input := strings.NewReader(templateTest.templateString)
 	writer := new(bytes.Buffer)
-	run(input, context, writer)
+	run(input, templateTest.contextRaw, writer)
 
-	expected := "Hello world!"
 	got := writer.String()
-	if got != expected {
-		t.Errorf("Expected: %v, Got: %v", expected, got)
+	if got != templateTest.expected {
+		t.Errorf(UnexpectedResultErrorString, templateTest.expected, got)
 	}
 }
 
 func TestRun_Invalid(t *testing.T) {
-	templateString := "a template {{nonexistentfunction}}"
 	var writer io.Writer = new(bytes.Buffer)
 	context := []string{
 		"test",
 		"key=world!",
 	}
-	if err := run(strings.NewReader(templateString), context, writer); err == nil {
-		t.Errorf("\"%v\" is an invalid template", templateString)
+	if err := run(strings.NewReader(InvalidTemplate_NonexistentFunction), context, writer); err == nil {
+		t.Errorf("\"%v\" is an invalid template", InvalidTemplate_NonexistentFunction)
 	}
 
-	templateString = "a legit template {{.key}}"
-	if err := run(strings.NewReader(templateString), context, writer); err == nil {
+	templateTest := NewLegitimateTemplateTest()
+	if err := run(strings.NewReader(templateTest.templateString), context, writer); err == nil {
 		t.Errorf("\"%v\" is invalid context", context)
 	}
 
-	context = []string{
-		"test=success",
-	}
 	writer = writers.NewErrorWriter()
-	if err := run(strings.NewReader(templateString), context, writer); err == nil {
-		t.Errorf("\"%v\" is invalid context", context)
+	if err := run(strings.NewReader(templateTest.templateString), templateTest.contextRaw, writer); err == nil {
+		t.Errorf("\"%+v\" should always error", writer)
 	}
 }
